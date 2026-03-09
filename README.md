@@ -1,30 +1,59 @@
 # simple-start
 
-simple-start replaces the stock "hello world" sample with a custom startup page for empty VS Code windows.
+[![Open VSX Version](https://img.shields.io/open-vsx/v/ElectricPants/simple-start?label=Open%20VSX&style=flat-square)](https://open-vsx.org/extension/ElectricPants/simple-start)
+[![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/ElectricPants.simple-start?label=VS%20Marketplace&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=ElectricPants.simple-start)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-When VS Code launches without an open folder or workspace, the extension can show a start page that:
+`simple-start` is a clean startup dashboard for VS Code empty windows.
 
-- Reads a configured projects root folder.
-- Lists the immediate child folders under that root.
-- Opens the clicked folder in the current window.
-- Closes the start page as part of the folder-open transition.
+When you launch VS Code with no folder/workspace open, it can show a fast project picker that:
+
+- lists immediate child folders of a configured root
+- shows the best available project icon (with hi-res preference)
+- opens the selected project in the current window
+
+## Install
+
+- Visual Studio Marketplace: <https://marketplace.visualstudio.com/items?itemName=ElectricPants.simple-start>
+- Open VSX: <https://open-vsx.org/extension/ElectricPants/simple-start>
+- Local `.vsix`: `simple-start-0.0.1.vsix` in this repository root
+
+Including install links keeps onboarding fast and helps users choose the right channel for VS Code, Cursor, and other Open VSX-compatible editors.
+
+## Quick Start
+
+1. Install the extension.
+2. Set `Workbench: Startup Editor` to `none`.
+3. Run `simple-start: Select Projects Root` and choose your parent projects folder.
+4. Open a new empty VS Code window.
+5. Pick a project card to open it.
+
+If the page does not open automatically, run `simple-start: Open Start Page`.
 
 ## Features
 
-- Startup-aware behavior: the page opens only for empty-window launches when enabled.
-- Configurable projects root: point the extension at the parent folder that contains your projects.
-- Fast local icons: cards can use common iOS, Android, macOS, Electron, and web icon layouts when they are found in standard project locations.
-- Shared app icon map: define common application names once and prioritize icon paths for all matching projects.
-- One-click project open: clicking a listed folder reuses the current VS Code window.
-- Manual recovery commands: reopen the page, change the root folder, or refresh the listing from the Command Palette.
+- Startup-aware open behavior for empty windows.
+- One-click project open in the current window.
+- Search/filter project cards.
+- Hi-res icon preference (Apple touch/app icons and larger assets favored over tiny favicons).
+- Broad icon discovery for web, iOS, Android, macOS, Electron, Node, and more.
+- Configurable shared app icon map for team-wide naming conventions.
+- Type-based SVG fallback icon when no file icon exists.
 
-## Extension Settings
+## Commands
 
-This extension contributes the following settings:
+- `simple-start: Open Start Page`
+- `simple-start: Select Projects Root`
+- `simple-start: Refresh Start Page`
 
-- `simpleStart.openOnStartup`: Open the start page when VS Code starts with no folder or workspace open and `workbench.startupEditor` is set to `none`.
-- `simpleStart.projectsRoot`: Absolute path to the folder that contains the project folders you want to list.
-- `simpleStart.applicationIconMap`: Object map of app names to icon candidate paths relative to each project folder.
+## Configuration
+
+- `simpleStart.openOnStartup`
+	Opens on startup for empty windows when `workbench.startupEditor` is `none`.
+- `simpleStart.projectsRoot`
+	Absolute path to the parent folder containing your projects.
+- `simpleStart.applicationIconMap`
+	Map app names to icon candidate paths relative to each project root.
 
 Example:
 
@@ -36,124 +65,94 @@ Example:
 		"android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
 	],
 	"admin": [
-		"public/favicon.png",
-		"build/icon.png"
+		"public/apple-touch-icon.png",
+		"public/android-chrome-192x192.png",
+		"public/favicon-512x512.png"
 	]
 }
 ```
 
-The key is matched against project folder names (`admin-portal` matches `admin`), so this is a simple way to maintain a common app catalog and improve icon hit-rate across related repos.
+Matching is name-based (`admin-portal` matches `admin`).
 
-## Commands
+## Icon Selection Strategy
 
-- `simple-start: Open Start Page`
-- `simple-start: Select Projects Root`
-- `simple-start: Refresh Start Page`
+`simple-start` prefers higher quality icons first:
+
+1. App-specific paths from `simpleStart.applicationIconMap`.
+2. iOS/Android/macOS/Electron conventional app icon locations.
+3. `package.json` `icon` field.
+4. Generic `*.appiconset` discovery.
+5. Ranked website icons (`apple-touch-icon`, `android-chrome-*`, large `192/512` assets).
+6. Fallback search for likely icon/logo assets.
+7. Generated type-based SVG icon.
+
+Icon paths are cached in-memory per project path for speed and refreshed when root changes or `Refresh Start Page` is used.
 
 ## Development
 
-- `npm run compile`: Compile the TypeScript extension.
-- `npm run watch`: Rebuild on file changes.
-- `npm run package:vsix`: Create a `.vsix` package for local installation.
-- Press `F5` in VS Code to launch the Extension Development Host.
+### Prerequisites
 
-## Run The Extension
+- Node.js 20+ (or current LTS)
+- npm
+- VS Code 1.109+
 
-1. Open this repository in VS Code.
-2. Press `F5` to start the `Run Extension` debug configuration.
-3. In the Extension Development Host window, make sure no folder or workspace is open.
-4. If the start page does not open automatically, run `simple-start: Open Start Page` from the Command Palette.
-5. Use `Choose root` on the page, or set `simpleStart.projectsRoot` in Settings.
-6. Click one of the listed folders to open that project in the current window.
-
-If you want simple-start to be the startup surface, set `Workbench: Startup Editor` to `none`. This extension uses that built-in VS Code setting as the signal to auto-open the page in empty windows.
-
-## Test The Behavior
-
-Manual checks:
-
-1. Start with an empty window and confirm the start page appears.
-2. Set a valid projects root and confirm only immediate child folders are listed.
-3. Click a listed folder and confirm VS Code opens it in the same window.
-4. Start VS Code with a folder already open and confirm the start page does not appear.
-5. Set an invalid projects root and confirm the page shows a recoverable error state.
-
-Automated checks:
-
-1. Run `npm run compile`.
-2. Run `npm run lint`.
-3. Run `npm test`.
-
-## Publish
-
-This extension can be distributed in three ways:
-
-- Visual Studio Marketplace for standard VS Code installs.
-- Open VSX for VS Code-compatible editors that do not use the Microsoft marketplace.
-- A `.vsix` package for manual installation in editors such as Cursor.
-
-### One-time setup
-
-1. Create a publisher named `ElectricPants` in the Visual Studio Marketplace.
-2. Create an Open VSX namespace that matches your publishing account.
-3. Create access tokens for both services.
-4. Log in before publishing:
+### Local Workflow
 
 ```bash
-npx vsce login ElectricPants
-npx ovsx create-namespace ElectricPants
-npx ovsx publish --pat <OPEN_VSX_TOKEN>
+npm install
+npm run compile
+npm run lint
 ```
 
-If you prefer not to store credentials in the CLI, you can pass them per command:
+- Press `F5` to launch the Extension Development Host.
+- Use `npm run watch` for incremental rebuilds.
+
+### Tests
 
 ```bash
-npx vsce publish --pat <VS_MARKETPLACE_TOKEN>
-npx ovsx publish --pat <OPEN_VSX_TOKEN>
+npm test
 ```
 
-### Release workflow
-
-1. Update `version` in `package.json`.
-2. Add release notes in `CHANGELOG.md`.
-3. Push the version bump to `main`.
-4. Create and push a matching tag such as `v0.0.1`.
-5. GitHub Actions validates that the tag matches `package.json` and that the tagged commit is on `main`.
-6. GitHub Actions runs compile, lint, packaging, publishes to both registries, and attaches the `.vsix` to a GitHub release.
-
-Commands:
+## Packaging And Publishing
 
 ```bash
-git checkout main
-git pull
-git tag v0.0.1
-git push origin v0.0.1
+npm run package:vsix
 ```
 
-Required GitHub repository secrets:
+Publish scripts:
 
-- `VSCE_PAT`: Visual Studio Marketplace personal access token.
-- `OVSX_PAT`: Open VSX access token.
+- `npm run publish:vsce`
+- `npm run publish:ovsx`
 
-The workflow file is `.github/workflows/release.yml`.
+Required secrets for CI release workflow:
 
-### Cursor compatibility
+- `VSCE_PAT`
+- `OVSX_PAT`
 
-Cursor can install standard VS Code extensions when they are distributed as a `.vsix`, and many builds can also consume Open VSX distributions. The safest compatibility path is:
+## Compatibility
 
-1. Keep the extension on stable VS Code APIs.
-2. Publish to Open VSX.
-3. Ship a `.vsix` artifact with each release.
+- VS Code: full support
+- Cursor / VS Code-compatible editors: install via Open VSX or `.vsix`
 
-## Known Issues
+## Troubleshooting
 
-- The project list is intentionally shallow: only the immediate child folders of the configured projects root are shown.
-- Project icons use fast local heuristics, not deep scans. Projects outside common iOS/Android/macOS/Electron/web icon layouts fall back to the letter badge.
-- Opening a folder reloads the VS Code window, which also closes the start page. That is expected behavior for `vscode.openFolder`.
-- Extensions cannot add a custom value to VS Code's built-in `Workbench: Startup Editor` selector, so simple-start uses `none` as the opt-in launch signal instead.
+- Start page not opening:
+	Set `workbench.startupEditor` to `none` and ensure no folder/workspace is open.
+- Wrong or blurry icon:
+	Run `simple-start: Refresh Start Page` to clear icon cache and re-rank candidates.
+- No projects listed:
+	Re-check `simpleStart.projectsRoot` and ensure it points to a directory with child folders.
 
-## Release Notes
+## Contributing
 
-### 0.0.1
+Please read `CONTRIBUTING.md` for setup, workflow, testing expectations, and PR guidance.
 
-Initial implementation of the custom startup page workflow.
+Community standards are in `CODE_OF_CONDUCT.md`.
+
+## Security
+
+See `SECURITY.md` for private vulnerability reporting instructions.
+
+## License
+
+MIT. See `LICENSE`.

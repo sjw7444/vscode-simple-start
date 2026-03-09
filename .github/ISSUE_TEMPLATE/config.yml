@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability report
+    url: https://github.com/sjw7444/vscode-simple-start/security/advisories/new
+    about: Please report security issues privately.
+  - name: Questions and usage help
+    url: https://github.com/sjw7444/vscode-simple-start/discussions
+    about: Ask questions and share ideas with the community.
