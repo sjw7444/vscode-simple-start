@@ -13,6 +13,7 @@ When VS Code launches without an open folder or workspace, the extension can sho
 
 - Startup-aware behavior: the page opens only for empty-window launches when enabled.
 - Configurable projects root: point the extension at the parent folder that contains your projects.
+- Fast local icons: cards can use common iOS app icons or local website favicons when they are found in standard project locations.
 - One-click project open: clicking a listed folder reuses the current VS Code window.
 - Manual recovery commands: reopen the page, change the root folder, or refresh the listing from the Command Palette.
 
@@ -66,6 +67,7 @@ Automated checks:
 ## Known Issues
 
 - The project list is intentionally shallow: only the immediate child folders of the configured projects root are shown.
+- Project icons use fast local heuristics, not deep scans. Projects outside common iOS asset or favicon layouts fall back to the letter badge.
 - Opening a folder reloads the VS Code window, which also closes the start page. That is expected behavior for `vscode.openFolder`.
 - `simpleStart.replaceDefaultStartupPage` changes the global `workbench.startupEditor` setting to `none`. Disabling the setting later does not automatically restore your previous startup editor preference.
 

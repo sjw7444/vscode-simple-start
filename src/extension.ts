@@ -7,10 +7,12 @@ const openOnStartupSetting = 'openOnStartup';
 const replaceDefaultStartupPageSetting = 'replaceDefaultStartupPage';
 
 let startPagePanel: vscode.WebviewPanel | undefined;
+const projectIconCache = new Map<string, string | null>();
 
 type ProjectItem = {
 	name: string;
 	path: string;
+	iconPath?: string;
 };
 
 type StartPageState = {
@@ -32,6 +34,8 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}),
 		vscode.commands.registerCommand(`${extensionId}.refreshStartPage`, async () => {
+			clearProjectIconCache();
+
 			if (startPagePanel) {
 				await renderStartPage(startPagePanel);
 				return;
@@ -130,6 +134,8 @@ async function selectProjectsRoot(): Promise<boolean> {
 		return false;
 	}
 
+	clearProjectIconCache();
+
 	await vscode.workspace.getConfiguration(configSection).update(
 		projectsRootSetting,
 		selectedRoot.fsPath,
@@ -141,6 +147,10 @@ async function selectProjectsRoot(): Promise<boolean> {
 
 async function renderStartPage(panel: vscode.WebviewPanel): Promise<void> {
 	const state = await loadStartPageState();
+	panel.webview.options = {
+		enableScripts: true,
+		localResourceRoots: state.rootPath ? [vscode.Uri.file(state.rootPath)] : []
+	};
 	panel.webview.html = getWebviewHtml(panel.webview, state);
 }
 
@@ -166,13 +176,17 @@ async function loadStartPageState(): Promise<StartPageState> {
 		}
 
 		const entries = await vscode.workspace.fs.readDirectory(rootUri);
-		const projects = entries
+		const projects = await Promise.all(entries
 			.filter(([, fileType]) => fileType === vscode.FileType.Directory)
 			.map(([name]) => ({
 				name,
 				path: vscode.Uri.joinPath(rootUri, name).fsPath
 			}))
-			.sort((left, right) => left.name.localeCompare(right.name));
+			.sort((left, right) => left.name.localeCompare(right.name))
+			.map(async (project) => ({
+				...project,
+				iconPath: await resolveProjectIconPath(vscode.Uri.file(project.path))
+			})));
 
 		if (projects.length === 0) {
 			return {
@@ -195,6 +209,10 @@ async function loadStartPageState(): Promise<StartPageState> {
 
 function getProjectsRoot(): string {
 	return vscode.workspace.getConfiguration(configSection).get<string>(projectsRootSetting, '').trim();
+}
+
+function clearProjectIconCache(): void {
+	projectIconCache.clear();
 }
 
 async function openProjectFolder(projectPath: string): Promise<void> {
@@ -223,10 +241,13 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 	const projectCards = state.projects.map((project) => {
 		const encodedPath = escapeHtml(project.path);
 		const encodedName = escapeHtml(project.name);
+		const projectVisual = project.iconPath
+			? `<img class="project-icon" src="${escapeHtml(webview.asWebviewUri(vscode.Uri.file(project.iconPath)).toString())}" alt="" loading="lazy">`
+			: `<span class="project-mark" aria-hidden="true">${getProjectInitial(project.name)}</span>`;
 
 		return `
 			<button class="project-card" data-path="${encodedPath}">
-				<span class="project-mark" aria-hidden="true">${getProjectInitial(project.name)}</span>
+				${projectVisual}
 				<span class="project-name">${encodedName}</span>
 			</button>`;
 	}).join('');
@@ -241,7 +262,7 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 		<html lang="en">
 		<head>
 			<meta charset="UTF-8">
-			<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+			<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
 			<title>Simple Start</title>
 			<style nonce="${nonce}">
@@ -502,6 +523,15 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					text-transform: uppercase;
 				}
 
+				.project-icon {
+					width: 42px;
+					height: 42px;
+					border-radius: 14px;
+					object-fit: cover;
+					background: rgba(255, 255, 255, 0.22);
+					border: 1px solid rgba(0, 0, 0, 0.04);
+				}
+
 				.project-name {
 					font-size: 1.18rem;
 					font-weight: 700;
@@ -568,9 +598,8 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 			<main>
 				<header>
 					<div>
-						<span class="kicker">Studio launchpad</span>
-						<h1>Pick up where you left off.</h1>
-						<p>Simple Start lists the folders directly inside your chosen projects root. Click one to open it in this window and move straight into work.</p>
+						<span class="kicker">Launchpad</span>
+						<h1>Pick up where you left off</h1>
 					</div>
 					<div class="hero-meta">
 						<div class="project-count">
@@ -636,4 +665,169 @@ function getNonce(): string {
 function getProjectInitial(name: string): string {
 	const trimmed = name.trim();
 	return trimmed.length > 0 ? trimmed.charAt(0) : '?';
+}
+
+async function resolveProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	if (projectIconCache.has(projectUri.fsPath)) {
+		return projectIconCache.get(projectUri.fsPath) ?? undefined;
+	}
+
+	const iconPath = await findProjectIconPath(projectUri);
+	projectIconCache.set(projectUri.fsPath, iconPath ?? null);
+	return iconPath;
+}
+
+async function findProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	const iosIconPath = await findIosProjectIconPath(projectUri);
+	if (iosIconPath) {
+		return iosIconPath;
+	}
+
+	for (const relativePath of getWebsiteIconCandidates()) {
+		const iconUri = vscode.Uri.joinPath(projectUri, ...relativePath.split('/'));
+		if (await isFile(iconUri)) {
+			return iconUri.fsPath;
+		}
+	}
+
+	return undefined;
+}
+
+async function findIosProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	const iosFolderUri = vscode.Uri.joinPath(projectUri, 'ios');
+	if (!await isDirectory(iosFolderUri)) {
+		return undefined;
+	}
+
+	for (const relativePath of await getIosIconSetCandidates(iosFolderUri)) {
+		const iconSetUri = vscode.Uri.joinPath(iosFolderUri, ...relativePath.split('/'));
+		if (!await isDirectory(iconSetUri)) {
+			continue;
+		}
+
+		const selectedIcon = await selectBestIconFromSet(iconSetUri);
+		if (selectedIcon) {
+			return selectedIcon.fsPath;
+		}
+	}
+
+	return undefined;
+}
+
+function getWebsiteIconCandidates(): string[] {
+	return [
+		'favicon.ico',
+		'favicon.png',
+		'public/favicon.ico',
+		'public/favicon.png',
+		'public/apple-touch-icon.png',
+		'src/favicon.ico',
+		'src/favicon.png',
+		'app/favicon.ico',
+		'app/favicon.png',
+		'app/icon.png',
+		'app/icon.svg'
+	];
+}
+
+async function getIosIconSetCandidates(iosFolderUri: vscode.Uri): Promise<string[]> {
+	const candidatePaths = new Set<string>([
+		'Runner/Assets.xcassets/AppIcon.appiconset',
+		'Runner/Images.xcassets/AppIcon.appiconset',
+		'App/App/Assets.xcassets/AppIcon.appiconset',
+		'App/App/Images.xcassets/AppIcon.appiconset'
+	]);
+
+	try {
+		const iosEntries = await vscode.workspace.fs.readDirectory(iosFolderUri);
+		for (const [name, fileType] of iosEntries) {
+			if (fileType !== vscode.FileType.Directory) {
+				continue;
+			}
+
+			candidatePaths.add(`${name}/Assets.xcassets/AppIcon.appiconset`);
+			candidatePaths.add(`${name}/Images.xcassets/AppIcon.appiconset`);
+			candidatePaths.add(`${name}/${name}/Assets.xcassets/AppIcon.appiconset`);
+			candidatePaths.add(`${name}/${name}/Images.xcassets/AppIcon.appiconset`);
+			candidatePaths.add(`${name}/App/Assets.xcassets/AppIcon.appiconset`);
+			candidatePaths.add(`${name}/App/Images.xcassets/AppIcon.appiconset`);
+		}
+	} catch {
+		return [...candidatePaths];
+	}
+
+	return [...candidatePaths];
+}
+
+async function selectBestIconFromSet(iconSetUri: vscode.Uri): Promise<vscode.Uri | undefined> {
+	const contentsIcon = await selectIconFromContentsJson(iconSetUri);
+	if (contentsIcon) {
+		return contentsIcon;
+	}
+
+	try {
+		const entries = await vscode.workspace.fs.readDirectory(iconSetUri);
+		const iconFiles = entries
+			.filter(([name, fileType]) => fileType === vscode.FileType.File && /\.(png|jpg|jpeg)$/i.test(name))
+			.map(([name]) => name)
+			.sort((left, right) => scoreIconName(right) - scoreIconName(left));
+
+		return iconFiles[0] ? vscode.Uri.joinPath(iconSetUri, iconFiles[0]) : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+async function selectIconFromContentsJson(iconSetUri: vscode.Uri): Promise<vscode.Uri | undefined> {
+	const contentsUri = vscode.Uri.joinPath(iconSetUri, 'Contents.json');
+	if (!await isFile(contentsUri)) {
+		return undefined;
+	}
+
+	try {
+		const fileContents = await vscode.workspace.fs.readFile(contentsUri);
+		const parsed = JSON.parse(new TextDecoder().decode(fileContents)) as { images?: Array<{ filename?: string }> };
+		const filenames = (parsed.images ?? [])
+			.map((image) => image.filename)
+			.filter((filename): filename is string => typeof filename === 'string' && filename.length > 0)
+			.sort((left, right) => scoreIconName(right) - scoreIconName(left));
+
+		for (const filename of filenames) {
+			const iconUri = vscode.Uri.joinPath(iconSetUri, filename);
+			if (await isFile(iconUri)) {
+				return iconUri;
+			}
+		}
+	} catch {
+		return undefined;
+	}
+
+	return undefined;
+}
+
+function scoreIconName(filename: string): number {
+	const numericMatches = [...filename.matchAll(/(\d+)/g)].map((match) => Number.parseInt(match[1], 10));
+	const numericScore = numericMatches.length > 0 ? Math.max(...numericMatches) : 0;
+	const pngBonus = filename.endsWith('.png') ? 500 : 0;
+	const appIconBonus = /appicon|icon/i.test(filename) ? 100 : 0;
+
+	return pngBonus + appIconBonus + numericScore;
+}
+
+async function isDirectory(uri: vscode.Uri): Promise<boolean> {
+	try {
+		const stat = await vscode.workspace.fs.stat(uri);
+		return (stat.type & vscode.FileType.Directory) !== 0;
+	} catch {
+		return false;
+	}
+}
+
+async function isFile(uri: vscode.Uri): Promise<boolean> {
+	try {
+		const stat = await vscode.workspace.fs.stat(uri);
+		return (stat.type & vscode.FileType.File) !== 0;
+	} catch {
+		return false;
+	}
 }
