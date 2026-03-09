@@ -15,6 +15,8 @@ type ProjectItem = {
 	iconPath?: string;
 };
 
+type ProjectType = 'nextjs' | 'electron' | 'flutter' | 'apple' | 'android' | 'node' | 'python' | 'api' | 'web' | 'generic';
+
 type ApplicationIconMap = Record<string, string[]>;
 
 const defaultApplicationIconMap: ApplicationIconMap = {
@@ -249,8 +251,13 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 		const encodedPath = escapeHtml(project.path);
 		const encodedName = escapeHtml(project.name);
 		const folderName = escapeHtml(project.path.split(/[\\/]/).pop() ?? project.name);
+		const iconSource = project.iconPath
+			? project.iconPath.startsWith('data:')
+				? project.iconPath
+				: webview.asWebviewUri(vscode.Uri.file(project.iconPath)).toString()
+			: '';
 		const projectVisual = project.iconPath
-			? `<img class="project-icon" src="${escapeHtml(webview.asWebviewUri(vscode.Uri.file(project.iconPath)).toString())}" alt="" loading="lazy">`
+			? `<img class="project-icon" src="${escapeHtml(iconSource)}" alt="" loading="lazy">`
 			: `<span class="project-mark" aria-hidden="true">${getProjectInitial(project.name)}</span>`;
 
 		return `
@@ -713,6 +720,8 @@ async function resolveProjectIconPath(projectUri: vscode.Uri, projectName: strin
 
 
 async function findProjectIconPath(projectUri: vscode.Uri, projectName: string): Promise<string | undefined> {
+	const projectType = await detectProjectType(projectUri);
+
 	const appCatalogIconPath = await findMappedApplicationIconPath(projectUri, projectName);
 	if (appCatalogIconPath) {
 		return appCatalogIconPath;
@@ -743,6 +752,11 @@ async function findProjectIconPath(projectUri: vscode.Uri, projectName: string):
 		return packageJsonIconPath;
 	}
 
+	const appIconSetPath = await findGenericAppIconSetPath(projectUri);
+	if (appIconSetPath) {
+		return appIconSetPath;
+	}
+
 	for (const relativePath of getWebsiteIconCandidates()) {
 		const iconUri = await resolveIconCandidate(projectUri, relativePath);
 		if (iconUri) {
@@ -750,7 +764,109 @@ async function findProjectIconPath(projectUri: vscode.Uri, projectName: string):
 		}
 	}
 
-	return undefined;
+	const fallbackIconPath = await findFallbackHiResIconPath(projectUri);
+	if (fallbackIconPath) {
+		return fallbackIconPath;
+	}
+
+	return createTypeIconDataUri(projectName, projectType);
+}
+
+async function detectProjectType(projectUri: vscode.Uri): Promise<ProjectType> {
+	if (await isFile(vscode.Uri.joinPath(projectUri, 'pubspec.yaml'))) {
+		return 'flutter';
+	}
+
+	if (
+		await isFile(vscode.Uri.joinPath(projectUri, 'next.config.js'))
+		|| await isFile(vscode.Uri.joinPath(projectUri, 'next.config.mjs'))
+		|| await isFile(vscode.Uri.joinPath(projectUri, 'next.config.ts'))
+	) {
+		return 'nextjs';
+	}
+
+	if (
+		await isFile(vscode.Uri.joinPath(projectUri, 'electron-builder.yml'))
+		|| await isFile(vscode.Uri.joinPath(projectUri, 'electron.vite.config.ts'))
+		|| await isFile(vscode.Uri.joinPath(projectUri, 'electron.vite.config.js'))
+	) {
+		return 'electron';
+	}
+
+	if (await isDirectory(vscode.Uri.joinPath(projectUri, 'ios')) || await hasXcodeProject(projectUri)) {
+		return 'apple';
+	}
+
+	if (await isDirectory(vscode.Uri.joinPath(projectUri, 'android'))) {
+		return 'android';
+	}
+
+	if (await isFile(vscode.Uri.joinPath(projectUri, 'requirements.txt')) || await isFile(vscode.Uri.joinPath(projectUri, 'pyproject.toml'))) {
+		return 'python';
+	}
+
+	if (await isFile(vscode.Uri.joinPath(projectUri, 'package.json'))) {
+		if (/api|server|backend/i.test(projectUri.fsPath)) {
+			return 'api';
+		}
+
+		return 'node';
+	}
+
+	if (/api|server|backend/i.test(projectUri.fsPath)) {
+		return 'api';
+	}
+
+	if (/site|web|com/i.test(projectUri.fsPath)) {
+		return 'web';
+	}
+
+	return 'generic';
+}
+
+async function hasXcodeProject(projectUri: vscode.Uri): Promise<boolean> {
+	try {
+		const entries = await vscode.workspace.fs.readDirectory(projectUri);
+		return entries.some(([name, fileType]) => fileType === vscode.FileType.Directory && name.endsWith('.xcodeproj'));
+	} catch {
+		return false;
+	}
+}
+
+function createTypeIconDataUri(projectName: string, projectType: ProjectType): string {
+	const initials = getProjectInitial(projectName).toUpperCase();
+	const labels: Record<ProjectType, string> = {
+		nextjs: 'NX',
+		electron: 'EL',
+		flutter: 'FL',
+		apple: 'AP',
+		android: 'AN',
+		node: 'ND',
+		python: 'PY',
+		api: 'API',
+		web: 'WEB',
+		generic: initials
+	};
+
+	const palettes: Record<ProjectType, { bg: string; fg: string }> = {
+		nextjs: { bg: '#111827', fg: '#f9fafb' },
+		electron: { bg: '#0f172a', fg: '#67e8f9' },
+		flutter: { bg: '#0c4a6e', fg: '#7dd3fc' },
+		apple: { bg: '#334155', fg: '#f8fafc' },
+		android: { bg: '#14532d', fg: '#bbf7d0' },
+		node: { bg: '#1f2937', fg: '#86efac' },
+		python: { bg: '#1e3a8a', fg: '#bfdbfe' },
+		api: { bg: '#7c2d12', fg: '#fed7aa' },
+		web: { bg: '#164e63', fg: '#a5f3fc' },
+		generic: { bg: '#374151', fg: '#e5e7eb' }
+	};
+
+	const label = labels[projectType] ?? initials;
+	const palette = palettes[projectType] ?? palettes.generic;
+	const safeLabel = escapeHtml(label);
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect width="256" height="256" rx="56" fill="${palette.bg}"/><text x="128" y="148" text-anchor="middle" fill="${palette.fg}" font-family="Avenir Next, Segoe UI, sans-serif" font-size="72" font-weight="700">${safeLabel}</text></svg>`;
+
+	return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 async function findMappedApplicationIconPath(projectUri: vscode.Uri, projectName: string): Promise<string | undefined> {
@@ -917,24 +1033,36 @@ async function findIosProjectIconPath(projectUri: vscode.Uri): Promise<string | 
 
 function getWebsiteIconCandidates(): string[] {
 	return [
+		'favicon@2x.png',
+		'favicon@3x.png',
 		'favicon.ico',
 		'favicon.png',
 		'favicon.svg',
 		'favicon-32x32.png',
 		'favicon-16x16.png',
+		'favicon-512x512.png',
+		'favicon-192x192.png',
+		'apple-touch-icon-180x180.png',
 		'apple-touch-icon.png',
 		'public/favicon.ico',
 		'public/favicon.png',
 		'public/favicon.svg',
 		'public/favicon-32x32.png',
 		'public/favicon-16x16.png',
+		'public/favicon-512x512.png',
+		'public/favicon-192x192.png',
+		'public/apple-touch-icon-180x180.png',
 		'public/apple-touch-icon.png',
 		'public/icon.png',
+		'public/icon-512.png',
+		'public/icon-192.png',
 		'public/icon.svg',
 		'src/favicon.ico',
 		'src/favicon.png',
 		'src/favicon.svg',
 		'src/assets/icon.png',
+		'src/assets/icon-512.png',
+		'src/assets/icon-192.png',
 		'src/assets/icon.svg',
 		'app/favicon.ico',
 		'app/favicon.png',
@@ -942,10 +1070,205 @@ function getWebsiteIconCandidates(): string[] {
 		'app/icon.png',
 		'app/icon.svg',
 		'app/icon.jpg',
+		'app/icon-512.png',
+		'app/icon-192.png',
 		'assets/icon.png',
+		'assets/AppIcon.png',
+		'assets/favicon.ico',
+		'assets/favicon.png',
+		'assets/favicon-32x32.png',
+		'assets/favicon-16x16.png',
+		'assets/apple-touch-icon.png',
 		'assets/icon.svg',
+		'dist/assets/AppIcon.png',
 		'static/favicon.png'
 	];
+}
+
+async function findGenericAppIconSetPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	const iconSetDirectories = await collectMatchingDirectories(projectUri, {
+		maxDepth: 5,
+		shouldInclude: (name) => /appicon.*\.appiconset$/i.test(name) || name.toLowerCase() === 'appicon.appiconset'
+	});
+
+	for (const iconSetUri of iconSetDirectories.sort((left, right) => scoreIconSetUri(right) - scoreIconSetUri(left))) {
+		const iconUri = await selectBestIconFromSet(iconSetUri);
+		if (iconUri) {
+			return iconUri.fsPath;
+		}
+	}
+
+	return undefined;
+}
+
+async function findFallbackHiResIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	const candidateFiles = await collectMatchingFiles(projectUri, {
+		maxDepth: 4,
+		extensions: ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico'],
+		namePattern: /(appicon|icon|favicon|logo|launchicon)/i
+	});
+
+	if (candidateFiles.length === 0) {
+		return undefined;
+	}
+
+	candidateFiles.sort((left, right) => scoreIconUri(right) - scoreIconUri(left));
+	return candidateFiles[0].fsPath;
+}
+
+type CollectDirectoryOptions = {
+	maxDepth: number;
+	shouldInclude: (name: string) => boolean;
+};
+
+type CollectFileOptions = {
+	maxDepth: number;
+	extensions: string[];
+	namePattern: RegExp;
+};
+
+async function collectMatchingDirectories(rootUri: vscode.Uri, options: CollectDirectoryOptions): Promise<vscode.Uri[]> {
+	const matches: vscode.Uri[] = [];
+	await walkDirectoryTree(rootUri, options.maxDepth, async (entryUri, entryName, fileType) => {
+		if (fileType === vscode.FileType.Directory && options.shouldInclude(entryName)) {
+			matches.push(entryUri);
+		}
+	});
+	return matches;
+}
+
+async function collectMatchingFiles(rootUri: vscode.Uri, options: CollectFileOptions): Promise<vscode.Uri[]> {
+	const matches: vscode.Uri[] = [];
+	const extensions = new Set(options.extensions.map((extension) => extension.toLowerCase()));
+
+	await walkDirectoryTree(rootUri, options.maxDepth, async (entryUri, entryName, fileType) => {
+		if (fileType !== vscode.FileType.File) {
+			return;
+		}
+
+		const lowerName = entryName.toLowerCase();
+		const extension = lowerName.includes('.') ? lowerName.slice(lowerName.lastIndexOf('.')) : '';
+		if (!extensions.has(extension)) {
+			return;
+		}
+
+		if (!options.namePattern.test(entryName)) {
+			return;
+		}
+
+		matches.push(entryUri);
+	});
+
+	return matches;
+}
+
+async function walkDirectoryTree(
+	directoryUri: vscode.Uri,
+	maxDepth: number,
+	onEntry: (entryUri: vscode.Uri, entryName: string, fileType: vscode.FileType) => Promise<void>
+): Promise<void> {
+	const skipDirectoryNames = new Set([
+		'node_modules',
+		'.git',
+		'.next',
+		'.nuxt',
+		'.idea',
+		'.vscode',
+		'coverage',
+		'.turbo'
+	]);
+
+	const walk = async (currentUri: vscode.Uri, depth: number): Promise<void> => {
+		if (depth > maxDepth) {
+			return;
+		}
+
+		let entries: [string, vscode.FileType][];
+		try {
+			entries = await vscode.workspace.fs.readDirectory(currentUri);
+		} catch {
+			return;
+		}
+
+		for (const [entryName, entryType] of entries) {
+			if (entryType === vscode.FileType.Directory && skipDirectoryNames.has(entryName)) {
+				continue;
+			}
+
+			const entryUri = vscode.Uri.joinPath(currentUri, entryName);
+			await onEntry(entryUri, entryName, entryType);
+
+			if (entryType === vscode.FileType.Directory) {
+				await walk(entryUri, depth + 1);
+			}
+		}
+	};
+
+	await walk(directoryUri, 0);
+}
+
+function scoreIconSetUri(iconSetUri: vscode.Uri): number {
+	const value = iconSetUri.fsPath.toLowerCase();
+	let score = 0;
+
+	if (value.includes('/assets.xcassets/')) {
+		score += 140;
+	}
+
+	if (value.includes('/appicon.appiconset')) {
+		score += 180;
+	}
+
+	if (value.includes('/ios/')) {
+		score += 90;
+	}
+
+	if (value.includes('/macos/')) {
+		score += 70;
+	}
+
+	if (value.includes('/runner/')) {
+		score += 50;
+	}
+
+	if (value.includes('/dist/') || value.includes('/build/')) {
+		score -= 25;
+	}
+
+	return score;
+}
+
+function scoreIconUri(iconUri: vscode.Uri): number {
+	const path = iconUri.fsPath;
+	const lowerPath = path.toLowerCase();
+	const filename = path.split(/[\\/]/).pop() ?? '';
+	let score = scoreIconName(filename);
+
+	if (lowerPath.includes('/assets.xcassets/')) {
+		score += 180;
+	}
+
+	if (lowerPath.includes('/public/')) {
+		score += 70;
+	}
+
+	if (lowerPath.includes('/assets/')) {
+		score += 55;
+	}
+
+	if (lowerPath.includes('/src/')) {
+		score += 45;
+	}
+
+	if (lowerPath.includes('/dist/')) {
+		score -= 20;
+	}
+
+	if (lowerPath.includes('/build/')) {
+		score -= 10;
+	}
+
+	return score;
 }
 
 function getAndroidIconCandidates(): string[] {
