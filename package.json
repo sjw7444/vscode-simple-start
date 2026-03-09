@@ -31,6 +31,12 @@
     "configuration": {
       "title": "Simple Start",
       "properties": {
+        "simpleStart.replaceDefaultStartupPage": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Set VS Code's built-in startup editor to 'none' so Simple Start can be the primary startup page in empty windows."
+        },
         "simpleStart.openOnStartup": {
           "type": "boolean",
           "default": true,

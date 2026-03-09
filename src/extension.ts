@@ -4,6 +4,7 @@ const extensionId = 'vscode-simple-start';
 const configSection = 'simpleStart';
 const projectsRootSetting = 'projectsRoot';
 const openOnStartupSetting = 'openOnStartup';
+const replaceDefaultStartupPageSetting = 'replaceDefaultStartupPage';
 
 let startPagePanel: vscode.WebviewPanel | undefined;
 
@@ -41,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	if (shouldOpenOnStartup()) {
-		void openStartPage(context);
+		void prepareStartupSurface().then(() => openStartPage(context));
 	}
 }
 
@@ -54,6 +55,21 @@ function shouldOpenOnStartup(): boolean {
 	return config.get<boolean>(openOnStartupSetting, true)
 		&& !vscode.workspace.workspaceFile
 		&& workspaceFolders.length === 0;
+}
+
+async function prepareStartupSurface(): Promise<void> {
+	const config = vscode.workspace.getConfiguration(configSection);
+	if (!config.get<boolean>(replaceDefaultStartupPageSetting, false)) {
+		return;
+	}
+
+	const workbenchConfig = vscode.workspace.getConfiguration('workbench');
+	const startupEditor = workbenchConfig.get<string>('startupEditor');
+	if (startupEditor !== 'none') {
+		await workbenchConfig.update('startupEditor', 'none', vscode.ConfigurationTarget.Global);
+	}
+
+	await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 }
 
 async function openStartPage(context: vscode.ExtensionContext): Promise<void> {
