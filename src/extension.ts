@@ -219,12 +219,14 @@ async function openProjectFolder(projectPath: string): Promise<void> {
 function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string {
 	const nonce = getNonce();
 	const escapedRoot = state.rootPath ? escapeHtml(state.rootPath) : 'Not configured';
+	const projectCount = state.projects.length;
 	const projectCards = state.projects.map((project) => {
 		const encodedPath = escapeHtml(project.path);
 		const encodedName = escapeHtml(project.name);
 
 		return `
 			<button class="project-card" data-path="${encodedPath}">
+				<span class="project-mark" aria-hidden="true">${getProjectInitial(project.name)}</span>
 				<span class="project-name">${encodedName}</span>
 			</button>`;
 	}).join('');
@@ -245,25 +247,33 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 			<style nonce="${nonce}">
 				:root {
 					color-scheme: light dark;
-					--bg: #f5f1e8;
-					--panel: rgba(255, 252, 247, 0.82);
-					--panel-border: rgba(62, 45, 30, 0.16);
-					--text: #2b2116;
-					--muted: #6e5a46;
-					--accent: #0c7c59;
-					--accent-strong: #07513b;
+					--bg: #efe5d3;
+					--bg-deep: #d9c3a6;
+					--panel: rgba(255, 249, 240, 0.8);
+					--panel-strong: rgba(255, 252, 247, 0.94);
+					--panel-border: rgba(71, 45, 19, 0.14);
+					--text: #24170f;
+					--muted: #735843;
+					--accent: #0e7a5f;
+					--accent-strong: #0a5f49;
+					--accent-soft: rgba(14, 122, 95, 0.14);
+					--shadow: 0 24px 80px rgba(66, 37, 8, 0.16);
 					--error: #8f2d1e;
 				}
 
 				@media (prefers-color-scheme: dark) {
 					:root {
-						--bg: #161511;
-						--panel: rgba(33, 28, 22, 0.88);
-						--panel-border: rgba(255, 238, 219, 0.12);
-						--text: #f3ecdf;
-						--muted: #c9baa6;
-						--accent: #6ed6ae;
-						--accent-strong: #49b18a;
+						--bg: #13100d;
+						--bg-deep: #23180f;
+						--panel: rgba(31, 24, 18, 0.8);
+						--panel-strong: rgba(41, 31, 23, 0.94);
+						--panel-border: rgba(252, 228, 197, 0.11);
+						--text: #f7efdf;
+						--muted: #cfbea8;
+						--accent: #74d5b0;
+						--accent-strong: #52b893;
+						--accent-soft: rgba(116, 213, 176, 0.14);
+						--shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
 						--error: #ff9c8b;
 					}
 				}
@@ -278,44 +288,100 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					padding: 32px;
 					font-family: Georgia, 'Times New Roman', serif;
 					background:
-						radial-gradient(circle at top left, rgba(12, 124, 89, 0.18), transparent 28%),
-						radial-gradient(circle at bottom right, rgba(181, 111, 48, 0.18), transparent 30%),
-						linear-gradient(135deg, var(--bg), #d9d1c2 160%);
+						radial-gradient(circle at 0% 0%, rgba(14, 122, 95, 0.24), transparent 24%),
+						radial-gradient(circle at 100% 100%, rgba(201, 121, 35, 0.22), transparent 26%),
+						linear-gradient(140deg, var(--bg), var(--bg-deep) 180%);
 					color: var(--text);
 				}
 
 				main {
 					max-width: 980px;
 					margin: 0 auto;
-					padding: 28px;
+					padding: 34px;
 					border: 1px solid var(--panel-border);
-					border-radius: 28px;
-					background: var(--panel);
+					border-radius: 30px;
+					background: linear-gradient(180deg, var(--panel-strong), var(--panel));
 					backdrop-filter: blur(12px);
-					box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12);
+					box-shadow: var(--shadow);
+					position: relative;
+					overflow: hidden;
+				}
+
+				main::before {
+					content: '';
+					position: absolute;
+					inset: 0 auto auto 0;
+					width: 260px;
+					height: 260px;
+					background: radial-gradient(circle, var(--accent-soft), transparent 68%);
+					pointer-events: none;
 				}
 
 				header {
-					display: flex;
-					flex-wrap: wrap;
-					justify-content: space-between;
+					display: grid;
+					grid-template-columns: minmax(0, 1fr) auto;
 					gap: 20px;
-					margin-bottom: 24px;
+					align-items: start;
+					margin-bottom: 28px;
+					position: relative;
+					z-index: 1;
+				}
+
+				.kicker {
+					display: inline-flex;
+					align-items: center;
+					gap: 8px;
+					padding: 7px 12px;
+					margin-bottom: 14px;
+					border-radius: 999px;
+					background: var(--accent-soft);
+					color: var(--accent-strong);
+					font-size: 0.82rem;
+					font-weight: 700;
+					letter-spacing: 0.08em;
+					text-transform: uppercase;
 				}
 
 				h1 {
 					margin: 0 0 8px;
-					font-size: clamp(2rem, 5vw, 4rem);
-					line-height: 0.98;
+					font-size: clamp(2.3rem, 5vw, 4.6rem);
+					line-height: 0.92;
 					font-weight: 700;
+					max-width: 12ch;
 				}
 
 				p {
 					margin: 0;
-					max-width: 44rem;
+					max-width: 42rem;
 					color: var(--muted);
-					font-size: 1rem;
+					font-size: 1.04rem;
 					line-height: 1.6;
+				}
+
+				.hero-meta {
+					display: grid;
+					gap: 10px;
+					justify-items: end;
+				}
+
+				.project-count {
+					display: inline-flex;
+					align-items: baseline;
+					gap: 8px;
+					padding: 16px 18px;
+					border-radius: 22px;
+					background: rgba(255, 255, 255, 0.34);
+					border: 1px solid var(--panel-border);
+				}
+
+				.project-count strong {
+					font-size: clamp(1.8rem, 4vw, 2.8rem);
+					line-height: 1;
+				}
+
+				.project-count span {
+					color: var(--muted);
+					font-size: 0.95rem;
 				}
 
 				.toolbar {
@@ -324,7 +390,9 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					gap: 12px;
 					align-items: center;
 					justify-content: space-between;
-					margin-top: 24px;
+					margin-top: 28px;
+					padding-top: 22px;
+					border-top: 1px solid var(--panel-border);
 				}
 
 				.toolbar button,
@@ -337,29 +405,36 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					padding: 12px 18px;
 					border-radius: 999px;
 					font: inherit;
-					background: var(--accent);
+					background: linear-gradient(180deg, var(--accent), var(--accent-strong));
 					color: #fff;
-					transition: transform 120ms ease, background 120ms ease;
+					box-shadow: 0 10px 26px rgba(14, 122, 95, 0.18);
+					transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 				}
 
 				.toolbar button.secondary {
 					background: transparent;
 					color: var(--text);
 					border: 1px solid var(--panel-border);
+					box-shadow: none;
 				}
 
 				.toolbar button:hover,
 				.toolbar button:focus-visible,
 				.project-card:hover,
 				.project-card:focus-visible {
-					transform: translateY(-1px);
+					transform: translateY(-2px);
+				}
+
+				.toolbar button:hover,
+				.toolbar button:focus-visible {
+					box-shadow: 0 14px 30px rgba(14, 122, 95, 0.24);
 				}
 
 				.root-banner {
 					flex: 1 1 320px;
-					padding: 14px 18px;
-					border-radius: 18px;
-					background: rgba(255, 255, 255, 0.32);
+					padding: 16px 18px;
+					border-radius: 20px;
+					background: rgba(255, 255, 255, 0.26);
 					border: 1px solid var(--panel-border);
 				}
 
@@ -387,34 +462,70 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				.project-list {
 					display: grid;
 					grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-					gap: 14px;
+					gap: 16px;
+					position: relative;
+					z-index: 1;
 				}
 
 				.project-card {
 					display: flex;
 					flex-direction: column;
 					align-items: flex-start;
+					gap: 10px;
 					padding: 18px;
-					border-radius: 20px;
-					background: rgba(255, 255, 255, 0.44);
+					border-radius: 24px;
+					background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.24));
 					border: 1px solid var(--panel-border);
 					text-align: left;
 					color: var(--text);
+					min-height: 150px;
+					justify-content: space-between;
+					transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+				}
+
+				.project-card:hover,
+				.project-card:focus-visible {
+					border-color: rgba(14, 122, 95, 0.3);
+					background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.34));
+				}
+
+				.project-mark {
+					display: inline-grid;
+					place-items: center;
+					width: 42px;
+					height: 42px;
+					border-radius: 14px;
+					background: var(--accent-soft);
+					color: var(--accent-strong);
+					font-size: 1rem;
+					font-weight: 700;
+					text-transform: uppercase;
 				}
 
 				.project-name {
-					font-size: 1.15rem;
+					font-size: 1.18rem;
 					font-weight: 700;
+					line-height: 1.3;
+				}
+
+				.project-open {
+					font-size: 0.88rem;
+					font-weight: 700;
+					letter-spacing: 0.04em;
+					text-transform: uppercase;
+					color: var(--accent-strong);
 				}
 
 				.status {
 					padding: 24px;
-					border-radius: 20px;
+					border-radius: 22px;
 					border: 1px dashed var(--panel-border);
-					background: rgba(255, 255, 255, 0.28);
+					background: rgba(255, 255, 255, 0.24);
 					font-size: 1rem;
 					line-height: 1.6;
 					color: var(--muted);
+					position: relative;
+					z-index: 1;
 				}
 
 				.status-error {
@@ -429,6 +540,14 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					main {
 						padding: 20px;
 						border-radius: 22px;
+					}
+
+					header {
+						grid-template-columns: 1fr;
+					}
+
+					.hero-meta {
+						justify-items: start;
 					}
 
 					.toolbar {
@@ -449,8 +568,15 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 			<main>
 				<header>
 					<div>
+						<span class="kicker">Studio launchpad</span>
 						<h1>Pick up where you left off.</h1>
 						<p>Simple Start lists the folders directly inside your chosen projects root. Click one to open it in this window and move straight into work.</p>
+					</div>
+					<div class="hero-meta">
+						<div class="project-count">
+							<strong>${projectCount}</strong>
+							<span>${projectCount === 1 ? 'project ready' : 'projects ready'}</span>
+						</div>
 					</div>
 				</header>
 				${stateMarkup}
@@ -505,4 +631,9 @@ function getNonce(): string {
 	}
 
 	return nonce;
+}
+
+function getProjectInitial(name: string): string {
+	const trimmed = name.trim();
+	return trimmed.length > 0 ? trimmed.charAt(0) : '?';
 }
