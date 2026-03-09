@@ -2,6 +2,7 @@
 
 [![Open VSX Version](https://img.shields.io/open-vsx/v/ElectricPants/simple-start?label=Open%20VSX&style=flat-square)](https://open-vsx.org/extension/ElectricPants/simple-start)
 [![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/ElectricPants.simple-start?label=VS%20Marketplace&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=ElectricPants.simple-start)
+[![CI Status](https://github.com/sjw7444/vscode-simple-start/actions/workflows/release.yml/badge.svg)](https://github.com/sjw7444/vscode-simple-start/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 `simple-start` is a clean startup dashboard for VS Code empty windows.
@@ -11,6 +12,10 @@ When you launch VS Code with no folder/workspace open, it can show a fast projec
 - lists immediate child folders of a configured root
 - shows the best available project icon (with hi-res preference)
 - opens the selected project in the current window
+
+## Screenshot
+
+![simple-start in VS Code](images/start-page-screenshot.png)
 
 ## Install
 
