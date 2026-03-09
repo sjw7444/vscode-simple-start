@@ -623,8 +623,7 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 			<main>
 				<header>
 					<div>
-						<span class="kicker">Launchpad</span>
-						<h1>Start Fast</h1>
+						<h1>Simple Start</h1>
 					</div>
 					<div class="hero-meta">
 						<div class="project-count">
@@ -757,11 +756,9 @@ async function findProjectIconPath(projectUri: vscode.Uri, projectName: string):
 		return appIconSetPath;
 	}
 
-	for (const relativePath of getWebsiteIconCandidates()) {
-		const iconUri = await resolveIconCandidate(projectUri, relativePath);
-		if (iconUri) {
-			return iconUri.fsPath;
-		}
+	const websiteIconPath = await findBestWebsiteIconPath(projectUri);
+	if (websiteIconPath) {
+		return websiteIconPath;
 	}
 
 	const fallbackIconPath = await findFallbackHiResIconPath(projectUri);
@@ -1033,17 +1030,25 @@ async function findIosProjectIconPath(projectUri: vscode.Uri): Promise<string | 
 
 function getWebsiteIconCandidates(): string[] {
 	return [
+		'apple-touch-icon-1024x1024.png',
+		'apple-touch-icon-512x512.png',
 		'favicon@2x.png',
 		'favicon@3x.png',
-		'favicon.ico',
-		'favicon.png',
-		'favicon.svg',
-		'favicon-32x32.png',
-		'favicon-16x16.png',
 		'favicon-512x512.png',
 		'favicon-192x192.png',
+		'favicon.svg',
+		'favicon.png',
+		'favicon-32x32.png',
+		'favicon-16x16.png',
+		'favicon.ico',
 		'apple-touch-icon-180x180.png',
 		'apple-touch-icon.png',
+		'public/apple-touch-icon-1024x1024.png',
+		'public/apple-touch-icon-512x512.png',
+		'public/android-chrome-512x512.png',
+		'public/android-chrome-192x192.png',
+		'public/icon-512x512.png',
+		'public/icon-192x192.png',
 		'public/favicon.ico',
 		'public/favicon.png',
 		'public/favicon.svg',
@@ -1057,6 +1062,12 @@ function getWebsiteIconCandidates(): string[] {
 		'public/icon-512.png',
 		'public/icon-192.png',
 		'public/icon.svg',
+		'assets/apple-touch-icon-1024x1024.png',
+		'assets/apple-touch-icon-512x512.png',
+		'assets/android-chrome-512x512.png',
+		'assets/android-chrome-192x192.png',
+		'assets/icon-512x512.png',
+		'assets/icon-192x192.png',
 		'src/favicon.ico',
 		'src/favicon.png',
 		'src/favicon.svg',
@@ -1083,6 +1094,69 @@ function getWebsiteIconCandidates(): string[] {
 		'dist/assets/AppIcon.png',
 		'static/favicon.png'
 	];
+}
+
+async function findBestWebsiteIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	const matches: vscode.Uri[] = [];
+
+	for (const relativePath of getWebsiteIconCandidates()) {
+		const iconUri = await resolveIconCandidate(projectUri, relativePath);
+		if (iconUri) {
+			matches.push(iconUri);
+		}
+	}
+
+	if (matches.length === 0) {
+		return undefined;
+	}
+
+	matches.sort((left, right) => scoreWebsiteIconUri(right) - scoreWebsiteIconUri(left));
+	return matches[0].fsPath;
+}
+
+function scoreWebsiteIconUri(iconUri: vscode.Uri): number {
+	const lowerPath = iconUri.fsPath.toLowerCase();
+	const filename = lowerPath.split(/[\\/]/).pop() ?? '';
+	let score = scoreIconUri(iconUri);
+
+	if (filename.includes('apple-touch-icon')) {
+		score += 900;
+	}
+
+	if (filename.includes('android-chrome')) {
+		score += 820;
+	}
+
+	if (filename.includes('maskable') || filename.includes('mstile')) {
+		score += 700;
+	}
+
+	if (filename === 'favicon.ico') {
+		score -= 1000;
+	}
+
+	if (filename.includes('favicon-16x16') || filename.includes('favicon-32x32')) {
+		score -= 650;
+	}
+
+	if (filename.includes('favicon') && !filename.includes('192') && !filename.includes('512') && !filename.includes('@2x') && !filename.includes('@3x')) {
+		score -= 280;
+	}
+
+	const dimensions = extractDimensionScore(filename);
+	score += dimensions;
+
+	return score;
+}
+
+function extractDimensionScore(filename: string): number {
+	const matches = [...filename.matchAll(/(\d{2,4})x(\d{2,4})/g)];
+	if (matches.length === 0) {
+		return 0;
+	}
+
+	const maxDimension = Math.max(...matches.map((match) => Math.max(Number.parseInt(match[1], 10), Number.parseInt(match[2], 10))));
+	return maxDimension;
 }
 
 async function findGenericAppIconSetPath(projectUri: vscode.Uri): Promise<string | undefined> {
@@ -1383,13 +1457,19 @@ async function selectIconFromContentsJson(iconSetUri: vscode.Uri): Promise<vscod
 }
 
 function scoreIconName(filename: string): number {
-	const numericMatches = [...filename.matchAll(/(\d+)/g)].map((match) => Number.parseInt(match[1], 10));
+	const normalizedFilename = filename.toLowerCase();
+	const numericMatches = [...normalizedFilename.matchAll(/(\d+)/g)].map((match) => Number.parseInt(match[1], 10));
 	const numericScore = numericMatches.length > 0 ? Math.max(...numericMatches) : 0;
-	const pngBonus = filename.endsWith('.png') ? 500 : 0;
-	const svgBonus = filename.endsWith('.svg') ? 300 : 0;
-	const appIconBonus = /appicon|icon/i.test(filename) ? 100 : 0;
+	const pngBonus = normalizedFilename.endsWith('.png') ? 500 : 0;
+	const svgBonus = normalizedFilename.endsWith('.svg') ? 300 : 0;
+	const appIconBonus = /appicon|icon/i.test(normalizedFilename) ? 100 : 0;
+	const faviconIcoPenalty = normalizedFilename === 'favicon.ico' ? -1000 : 0;
+	const tinyFaviconPenalty = /favicon-?(16x16|32x32)/.test(normalizedFilename) ? -500 : 0;
+	const appleTouchBonus = normalizedFilename.includes('apple-touch-icon') ? 700 : 0;
+	const chromeBonus = normalizedFilename.includes('android-chrome') ? 650 : 0;
+	const highResBonus = extractDimensionScore(normalizedFilename);
 
-	return pngBonus + svgBonus + appIconBonus + numericScore;
+	return pngBonus + svgBonus + appIconBonus + numericScore + faviconIcoPenalty + tinyFaviconPenalty + appleTouchBonus + chromeBonus + highResBonus;
 }
 
 async function isDirectory(uri: vscode.Uri): Promise<boolean> {
