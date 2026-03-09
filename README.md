@@ -21,8 +21,7 @@ When VS Code launches without an open folder or workspace, the extension can sho
 
 This extension contributes the following settings:
 
-- `simpleStart.replaceDefaultStartupPage`: Sets `workbench.startupEditor` to `none` so the built-in Welcome page does not compete with Simple Start in empty windows.
-- `simpleStart.openOnStartup`: Open the start page when VS Code starts with no folder or workspace open.
+- `simpleStart.openOnStartup`: Open the start page when VS Code starts with no folder or workspace open and `workbench.startupEditor` is set to `none`.
 - `simpleStart.projectsRoot`: Absolute path to the folder that contains the project folders you want to list.
 
 ## Commands
@@ -46,7 +45,7 @@ This extension contributes the following settings:
 5. Use `Choose root` on the page, or set `simpleStart.projectsRoot` in Settings.
 6. Click one of the listed folders to open that project in the current window.
 
-If you want Simple Start instead of the built-in Welcome page, enable `simpleStart.replaceDefaultStartupPage` in Settings. That updates VS Code's `workbench.startupEditor` setting to `none`.
+If you want Simple Start to be the startup surface, set `Workbench: Startup Editor` to `none`. This extension uses that built-in VS Code setting as the signal to auto-open the page in empty windows.
 
 ## Test The Behavior
 
@@ -69,7 +68,7 @@ Automated checks:
 - The project list is intentionally shallow: only the immediate child folders of the configured projects root are shown.
 - Project icons use fast local heuristics, not deep scans. Projects outside common iOS asset or favicon layouts fall back to the letter badge.
 - Opening a folder reloads the VS Code window, which also closes the start page. That is expected behavior for `vscode.openFolder`.
-- `simpleStart.replaceDefaultStartupPage` changes the global `workbench.startupEditor` setting to `none`. Disabling the setting later does not automatically restore your previous startup editor preference.
+- Extensions cannot add a custom value to VS Code's built-in `Workbench: Startup Editor` selector, so Simple Start uses `none` as the opt-in launch signal instead.
 
 ## Release Notes
 

@@ -31,17 +31,11 @@
     "configuration": {
       "title": "Simple Start",
       "properties": {
-        "simpleStart.replaceDefaultStartupPage": {
-          "type": "boolean",
-          "default": false,
-          "scope": "application",
-          "description": "Set VS Code's built-in startup editor to 'none' so Simple Start can be the primary startup page in empty windows."
-        },
         "simpleStart.openOnStartup": {
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "description": "Open the Simple Start page when VS Code launches with no folder or workspace open."
+          "description": "Open the Simple Start page when VS Code launches with no folder or workspace open and workbench.startupEditor is set to 'none'."
         },
         "simpleStart.projectsRoot": {
           "type": "string",
