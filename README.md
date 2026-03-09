@@ -96,20 +96,26 @@ npx ovsx publish --pat <OPEN_VSX_TOKEN>
 
 1. Update `version` in `package.json`.
 2. Add release notes in `CHANGELOG.md`.
-3. Run `npm run compile`.
-4. Run `npm run lint`.
-5. Run `npm run package:vsix` and test the generated `.vsix` in VS Code and Cursor.
-6. Publish to the Visual Studio Marketplace.
-7. Publish to Open VSX.
-8. Attach the `.vsix` file to a GitHub release.
+3. Push the version bump to `main`.
+4. Create and push a matching tag such as `v0.0.1`.
+5. GitHub Actions validates that the tag matches `package.json` and that the tagged commit is on `main`.
+6. GitHub Actions runs compile, lint, packaging, publishes to both registries, and attaches the `.vsix` to a GitHub release.
 
 Commands:
 
 ```bash
-npm run package:vsix
-npm run publish:vsce -- --pat <VS_MARKETPLACE_TOKEN>
-npm run publish:ovsx -- --pat <OPEN_VSX_TOKEN>
+git checkout main
+git pull
+git tag v0.0.1
+git push origin v0.0.1
 ```
+
+Required GitHub repository secrets:
+
+- `VSCE_PAT`: Visual Studio Marketplace personal access token.
+- `OVSX_PAT`: Open VSX access token.
+
+The workflow file is `.github/workflows/release.yml`.
 
 ### Cursor compatibility
 

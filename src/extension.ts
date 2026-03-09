@@ -71,7 +71,7 @@ async function openStartPage(context: vscode.ExtensionContext): Promise<void> {
 
 	startPagePanel = vscode.window.createWebviewPanel(
 		'simpleStart.startPage',
-		'simple-start',
+		'Simple Start',
 		vscode.ViewColumn.One,
 		{
 			enableScripts: true,
