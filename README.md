@@ -13,7 +13,8 @@ When VS Code launches without an open folder or workspace, the extension can sho
 
 - Startup-aware behavior: the page opens only for empty-window launches when enabled.
 - Configurable projects root: point the extension at the parent folder that contains your projects.
-- Fast local icons: cards can use common iOS app icons or local website favicons when they are found in standard project locations.
+- Fast local icons: cards can use common iOS, Android, macOS, Electron, and web icon layouts when they are found in standard project locations.
+- Shared app icon map: define common application names once and prioritize icon paths for all matching projects.
 - One-click project open: clicking a listed folder reuses the current VS Code window.
 - Manual recovery commands: reopen the page, change the root folder, or refresh the listing from the Command Palette.
 
@@ -23,6 +24,25 @@ This extension contributes the following settings:
 
 - `simpleStart.openOnStartup`: Open the start page when VS Code starts with no folder or workspace open and `workbench.startupEditor` is set to `none`.
 - `simpleStart.projectsRoot`: Absolute path to the folder that contains the project folders you want to list.
+- `simpleStart.applicationIconMap`: Object map of app names to icon candidate paths relative to each project folder.
+
+Example:
+
+```json
+"simpleStart.applicationIconMap": {
+	"shopper": [
+		"assets/icon.png",
+		"ios/Runner/Assets.xcassets/AppIcon.appiconset",
+		"android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
+	],
+	"admin": [
+		"public/favicon.png",
+		"build/icon.png"
+	]
+}
+```
+
+The key is matched against project folder names (`admin-portal` matches `admin`), so this is a simple way to maintain a common app catalog and improve icon hit-rate across related repos.
 
 ## Commands
 
@@ -128,7 +148,7 @@ Cursor can install standard VS Code extensions when they are distributed as a `.
 ## Known Issues
 
 - The project list is intentionally shallow: only the immediate child folders of the configured projects root are shown.
-- Project icons use fast local heuristics, not deep scans. Projects outside common iOS asset or favicon layouts fall back to the letter badge.
+- Project icons use fast local heuristics, not deep scans. Projects outside common iOS/Android/macOS/Electron/web icon layouts fall back to the letter badge.
 - Opening a folder reloads the VS Code window, which also closes the start page. That is expected behavior for `vscode.openFolder`.
 - Extensions cannot add a custom value to VS Code's built-in `Workbench: Startup Editor` selector, so simple-start uses `none` as the opt-in launch signal instead.
 

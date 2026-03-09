@@ -4,6 +4,7 @@ const extensionId = 'simple-start';
 const configSection = 'simpleStart';
 const projectsRootSetting = 'projectsRoot';
 const openOnStartupSetting = 'openOnStartup';
+const applicationIconMapSetting = 'applicationIconMap';
 
 let startPagePanel: vscode.WebviewPanel | undefined;
 const projectIconCache = new Map<string, string | null>();
@@ -12,6 +13,26 @@ type ProjectItem = {
 	name: string;
 	path: string;
 	iconPath?: string;
+};
+
+type ApplicationIconMap = Record<string, string[]>;
+
+const defaultApplicationIconMap: ApplicationIconMap = {
+	react: ['public/logo192.png', 'public/logo512.png', 'src/logo.svg', 'src/assets/logo.svg'],
+	nextjs: ['app/icon.png', 'app/icon.jpg', 'app/icon.svg', 'public/icon.png', 'public/apple-touch-icon.png'],
+	vue: ['public/favicon.ico', 'public/favicon.svg', 'src/assets/logo.svg'],
+	angular: ['src/favicon.ico', 'src/assets/icons/icon-192x192.png'],
+	svelte: ['static/favicon.png', 'src/lib/assets/icon.png'],
+	expo: ['assets/icon.png', 'assets/adaptive-icon.png', 'assets/splash-icon.png'],
+	flutter: [
+		'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+		'ios/Runner/Assets.xcassets/AppIcon.appiconset'
+	],
+	electron: ['build/icon.png', 'build/icon.ico', 'assets/icon.png', 'resources/icon.png'],
+	ios: ['ios/Runner/Assets.xcassets/AppIcon.appiconset', 'ios/Runner/Images.xcassets/AppIcon.appiconset'],
+	android: ['android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', 'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'],
+	website: ['favicon.ico', 'favicon.png', 'public/favicon.ico', 'public/apple-touch-icon.png'],
+	web: ['favicon.ico', 'favicon.png', 'public/favicon.ico', 'public/apple-touch-icon.png']
 };
 
 type StartPageState = {
@@ -171,7 +192,7 @@ async function loadStartPageState(): Promise<StartPageState> {
 			.sort((left, right) => left.name.localeCompare(right.name))
 			.map(async (project) => ({
 				...project,
-				iconPath: await resolveProjectIconPath(vscode.Uri.file(project.path))
+				iconPath: await resolveProjectIconPath(vscode.Uri.file(project.path), project.name)
 			})));
 
 		if (projects.length === 0) {
@@ -227,6 +248,7 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 	const projectCards = state.projects.map((project) => {
 		const encodedPath = escapeHtml(project.path);
 		const encodedName = escapeHtml(project.name);
+		const folderName = escapeHtml(project.path.split(/[\\/]/).pop() ?? project.name);
 		const projectVisual = project.iconPath
 			? `<img class="project-icon" src="${escapeHtml(webview.asWebviewUri(vscode.Uri.file(project.iconPath)).toString())}" alt="" loading="lazy">`
 			: `<span class="project-mark" aria-hidden="true">${getProjectInitial(project.name)}</span>`;
@@ -235,6 +257,8 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 			<button class="project-card" data-path="${encodedPath}">
 				${projectVisual}
 				<span class="project-name">${encodedName}</span>
+				<span class="project-path">${folderName}</span>
+				<span class="project-open">Open project</span>
 			</button>`;
 	}).join('');
 
@@ -474,6 +498,26 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					z-index: 1;
 				}
 
+				.project-search {
+					position: relative;
+					margin-bottom: 18px;
+					z-index: 1;
+				}
+
+				.project-search input {
+					width: 100%;
+					padding: 12px 14px;
+					border-radius: 14px;
+					border: 1px solid var(--panel-border);
+					background: rgba(255, 255, 255, 0.34);
+					color: var(--text);
+					font: inherit;
+				}
+
+				.project-search input::placeholder {
+					color: var(--muted);
+				}
+
 				.project-card {
 					display: flex;
 					flex-direction: column;
@@ -488,6 +532,11 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					min-height: 150px;
 					justify-content: space-between;
 					transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+					animation: card-in 180ms ease both;
+				}
+
+				.project-card[hidden] {
+					display: none;
 				}
 
 				.project-card:hover,
@@ -524,6 +573,15 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					line-height: 1.3;
 				}
 
+				.project-path {
+					font-size: 0.84rem;
+					color: var(--muted);
+					max-width: 100%;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+
 				.project-open {
 					font-size: 0.88rem;
 					font-weight: 700;
@@ -546,6 +604,18 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 
 				.status-error {
 					color: var(--error);
+				}
+
+				@keyframes card-in {
+					from {
+						opacity: 0;
+						transform: translateY(6px);
+					}
+
+					to {
+						opacity: 1;
+						transform: translateY(0);
+					}
 				}
 
 				@media (max-width: 640px) {
@@ -585,15 +655,20 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				<header>
 					<div>
 						<span class="kicker">Launchpad</span>
-						<h1>Pick up where you left off</h1>
+						<h1>Start Fast</h1>
 					</div>
 					<div class="hero-meta">
 						<div class="project-count">
 							<strong>${projectCount}</strong>
-							<span>${projectCount === 1 ? 'project ready' : 'projects ready'}</span>
+							<span>${projectCount === 1 ? 'project' : 'projects'}</span>
 						</div>
 					</div>
 				</header>
+				${projectCount > 0 ? `
+					<div class="project-search">
+						<input id="project-search" type="search" placeholder="Filter projects by name">
+					</div>
+				` : ''}
 				${stateMarkup}
 				<section class="toolbar">
 					<div class="root-banner">
@@ -623,6 +698,17 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 						});
 					});
 				});
+
+				const searchElement = document.getElementById('project-search');
+				if (searchElement) {
+					searchElement.addEventListener('input', () => {
+						const query = searchElement.value.trim().toLowerCase();
+						document.querySelectorAll('.project-card').forEach((element) => {
+							const text = (element.textContent ?? '').toLowerCase();
+							element.hidden = query.length > 0 && !text.includes(query);
+						});
+					});
+				}
 			</script>
 		</body>
 		</html>`;
@@ -653,30 +739,197 @@ function getProjectInitial(name: string): string {
 	return trimmed.length > 0 ? trimmed.charAt(0) : '?';
 }
 
-async function resolveProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+async function resolveProjectIconPath(projectUri: vscode.Uri, projectName: string): Promise<string | undefined> {
 	if (projectIconCache.has(projectUri.fsPath)) {
 		return projectIconCache.get(projectUri.fsPath) ?? undefined;
 	}
 
-	const iconPath = await findProjectIconPath(projectUri);
+	const iconPath = await findProjectIconPath(projectUri, projectName);
 	projectIconCache.set(projectUri.fsPath, iconPath ?? null);
 	return iconPath;
 }
 
-async function findProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+
+async function findProjectIconPath(projectUri: vscode.Uri, projectName: string): Promise<string | undefined> {
+	const appCatalogIconPath = await findMappedApplicationIconPath(projectUri, projectName);
+	if (appCatalogIconPath) {
+		return appCatalogIconPath;
+	}
+
 	const iosIconPath = await findIosProjectIconPath(projectUri);
 	if (iosIconPath) {
 		return iosIconPath;
 	}
 
+	const androidIconPath = await findAndroidProjectIconPath(projectUri);
+	if (androidIconPath) {
+		return androidIconPath;
+	}
+
+	const macosIconPath = await findMacosProjectIconPath(projectUri);
+	if (macosIconPath) {
+		return macosIconPath;
+	}
+
+	const electronIconPath = await findElectronProjectIconPath(projectUri);
+	if (electronIconPath) {
+		return electronIconPath;
+	}
+
+	const packageJsonIconPath = await findPackageJsonIconPath(projectUri);
+	if (packageJsonIconPath) {
+		return packageJsonIconPath;
+	}
+
 	for (const relativePath of getWebsiteIconCandidates()) {
-		const iconUri = vscode.Uri.joinPath(projectUri, ...relativePath.split('/'));
-		if (await isFile(iconUri)) {
+		const iconUri = await resolveIconCandidate(projectUri, relativePath);
+		if (iconUri) {
 			return iconUri.fsPath;
 		}
 	}
 
 	return undefined;
+}
+
+async function findMappedApplicationIconPath(projectUri: vscode.Uri, projectName: string): Promise<string | undefined> {
+	const candidatePaths = getApplicationIconCandidates(projectName);
+
+	for (const relativePath of candidatePaths) {
+		const iconUri = await resolveIconCandidate(projectUri, relativePath);
+		if (iconUri) {
+			return iconUri.fsPath;
+		}
+	}
+
+	return undefined;
+}
+
+function getApplicationIconCandidates(projectName: string): string[] {
+	const normalizedProjectName = normalizeAppKey(projectName);
+	const configuredMap = getApplicationIconMap();
+	const candidates: string[] = [];
+
+	for (const [appKey, paths] of Object.entries(configuredMap)) {
+		const normalizedAppKey = normalizeAppKey(appKey);
+		if (!normalizedAppKey) {
+			continue;
+		}
+
+		const isMatch = normalizedProjectName === normalizedAppKey
+			|| normalizedProjectName.includes(normalizedAppKey)
+			|| normalizedAppKey.includes(normalizedProjectName);
+
+		if (isMatch) {
+			candidates.push(...paths);
+		}
+	}
+
+	return [...new Set(candidates)];
+}
+
+function getApplicationIconMap(): ApplicationIconMap {
+	const configuredValue = vscode.workspace.getConfiguration(configSection).get<unknown>(applicationIconMapSetting, {});
+	const mergedMap: ApplicationIconMap = { ...defaultApplicationIconMap };
+
+	if (!configuredValue || typeof configuredValue !== 'object' || Array.isArray(configuredValue)) {
+		return mergedMap;
+	}
+
+	for (const [key, value] of Object.entries(configuredValue as Record<string, unknown>)) {
+		if (typeof key !== 'string') {
+			continue;
+		}
+
+		if (!Array.isArray(value)) {
+			continue;
+		}
+
+		const paths = value
+			.filter((entry): entry is string => typeof entry === 'string')
+			.map((entry) => entry.trim())
+			.filter((entry) => entry.length > 0);
+
+		if (paths.length > 0) {
+			mergedMap[key] = [...new Set(paths)];
+		}
+	}
+
+	return mergedMap;
+}
+
+function normalizeAppKey(value: string): string {
+	return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, '');
+}
+
+async function findAndroidProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	for (const relativePath of getAndroidIconCandidates()) {
+		const iconUri = await resolveIconCandidate(projectUri, relativePath);
+		if (iconUri) {
+			return iconUri.fsPath;
+		}
+	}
+
+	return undefined;
+}
+
+async function findMacosProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	for (const relativePath of getMacosIconCandidates()) {
+		const iconUri = await resolveIconCandidate(projectUri, relativePath);
+		if (iconUri) {
+			return iconUri.fsPath;
+		}
+	}
+
+	return undefined;
+}
+
+async function findElectronProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	for (const relativePath of getElectronIconCandidates()) {
+		const iconUri = await resolveIconCandidate(projectUri, relativePath);
+		if (iconUri) {
+			return iconUri.fsPath;
+		}
+	}
+
+	return undefined;
+}
+
+async function findPackageJsonIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
+	const packageJsonUri = vscode.Uri.joinPath(projectUri, 'package.json');
+	if (!await isFile(packageJsonUri)) {
+		return undefined;
+	}
+
+	try {
+		const packageJsonContent = await vscode.workspace.fs.readFile(packageJsonUri);
+		const parsed = JSON.parse(new TextDecoder().decode(packageJsonContent)) as { icon?: string };
+		if (typeof parsed.icon !== 'string' || parsed.icon.trim().length === 0) {
+			return undefined;
+		}
+
+		const iconUri = await resolveIconCandidate(projectUri, parsed.icon);
+		return iconUri?.fsPath;
+	} catch {
+		return undefined;
+	}
+}
+
+async function resolveIconCandidate(projectUri: vscode.Uri, candidatePath: string): Promise<vscode.Uri | undefined> {
+	const normalizedPath = candidatePath.trim();
+	if (!normalizedPath) {
+		return undefined;
+	}
+
+	const candidateUri = vscode.Uri.joinPath(projectUri, ...normalizedPath.split('/'));
+	if (normalizedPath.toLowerCase().endsWith('.appiconset')) {
+		if (!await isDirectory(candidateUri)) {
+			return undefined;
+		}
+
+		return selectBestIconFromSet(candidateUri);
+	}
+
+	return await isFile(candidateUri) ? candidateUri : undefined;
 }
 
 async function findIosProjectIconPath(projectUri: vscode.Uri): Promise<string | undefined> {
@@ -704,15 +957,68 @@ function getWebsiteIconCandidates(): string[] {
 	return [
 		'favicon.ico',
 		'favicon.png',
+		'favicon.svg',
+		'favicon-32x32.png',
+		'favicon-16x16.png',
+		'apple-touch-icon.png',
 		'public/favicon.ico',
 		'public/favicon.png',
+		'public/favicon.svg',
+		'public/favicon-32x32.png',
+		'public/favicon-16x16.png',
 		'public/apple-touch-icon.png',
+		'public/icon.png',
+		'public/icon.svg',
 		'src/favicon.ico',
 		'src/favicon.png',
+		'src/favicon.svg',
+		'src/assets/icon.png',
+		'src/assets/icon.svg',
 		'app/favicon.ico',
 		'app/favicon.png',
+		'app/favicon.svg',
 		'app/icon.png',
-		'app/icon.svg'
+		'app/icon.svg',
+		'app/icon.jpg',
+		'assets/icon.png',
+		'assets/icon.svg',
+		'static/favicon.png'
+	];
+}
+
+function getAndroidIconCandidates(): string[] {
+	return [
+		'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+		'android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png',
+		'android/app/src/main/res/mipmap-xhdpi/ic_launcher.png',
+		'android/app/src/main/res/mipmap-hdpi/ic_launcher.png',
+		'android/app/src/main/res/mipmap-mdpi/ic_launcher.png',
+		'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png',
+		'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml',
+		'android/app/src/main/res/drawable/ic_launcher_foreground.png',
+		'android/app/src/main/res/drawable/ic_launcher_background.png',
+		'android/app/src/main/ic_launcher-web.png'
+	];
+}
+
+function getMacosIconCandidates(): string[] {
+	return [
+		'macos/Runner/Assets.xcassets/AppIcon.appiconset',
+		'macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png',
+		'macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png'
+	];
+}
+
+function getElectronIconCandidates(): string[] {
+	return [
+		'build/icon.png',
+		'build/icon.ico',
+		'build/icons/512x512.png',
+		'assets/icon.png',
+		'assets/icon.ico',
+		'resources/icon.png',
+		'icon.png',
+		'icon.ico'
 	];
 }
 
@@ -754,7 +1060,7 @@ async function selectBestIconFromSet(iconSetUri: vscode.Uri): Promise<vscode.Uri
 	try {
 		const entries = await vscode.workspace.fs.readDirectory(iconSetUri);
 		const iconFiles = entries
-			.filter(([name, fileType]) => fileType === vscode.FileType.File && /\.(png|jpg|jpeg)$/i.test(name))
+			.filter(([name, fileType]) => fileType === vscode.FileType.File && /\.(png|jpg|jpeg|webp|svg)$/i.test(name))
 			.map(([name]) => name)
 			.sort((left, right) => scoreIconName(right) - scoreIconName(left));
 
@@ -795,9 +1101,10 @@ function scoreIconName(filename: string): number {
 	const numericMatches = [...filename.matchAll(/(\d+)/g)].map((match) => Number.parseInt(match[1], 10));
 	const numericScore = numericMatches.length > 0 ? Math.max(...numericMatches) : 0;
 	const pngBonus = filename.endsWith('.png') ? 500 : 0;
+	const svgBonus = filename.endsWith('.svg') ? 300 : 0;
 	const appIconBonus = /appicon|icon/i.test(filename) ? 100 : 0;
 
-	return pngBonus + appIconBonus + numericScore;
+	return pngBonus + svgBonus + appIconBonus + numericScore;
 }
 
 async function isDirectory(uri: vscode.Uri): Promise<boolean> {
