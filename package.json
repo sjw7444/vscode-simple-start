@@ -1,8 +1,8 @@
 {
   "name": "simple-start",
-  "displayName": "simple-start",
+  "displayName": "Simple Start",
   "publisher": "ElectricPants",
-  "description": "Custom startup page for choosing a project from a configured root folder.",
+  "description": "Custom startup page for choosing a project from a configured root folder. Simple and opinionated, with a focus on keyboard navigation and quickness",
   "version": "0.0.1",
   "license": "MIT",
   "repository": {
