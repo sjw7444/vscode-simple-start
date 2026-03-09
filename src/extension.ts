@@ -397,7 +397,7 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					display: flex;
 					flex-wrap: wrap;
 					gap: 12px;
-					align-items: center;
+					align-items: stretch;
 					justify-content: space-between;
 					margin-top: 20px;
 					padding-top: 16px;
@@ -450,6 +450,7 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					display: flex;
 					flex-wrap: wrap;
 					gap: 12px;
+					align-items: stretch;
 				}
 
 				.root-label {
