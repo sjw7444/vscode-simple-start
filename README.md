@@ -1,6 +1,6 @@
-# Simple Start
+# simple-start
 
-Simple Start replaces the stock "hello world" sample with a custom startup page for empty VS Code windows.
+simple-start replaces the stock "hello world" sample with a custom startup page for empty VS Code windows.
 
 When VS Code launches without an open folder or workspace, the extension can show a start page that:
 
@@ -26,14 +26,15 @@ This extension contributes the following settings:
 
 ## Commands
 
-- `Simple Start: Open Start Page`
-- `Simple Start: Select Projects Root`
-- `Simple Start: Refresh Start Page`
+- `simple-start: Open Start Page`
+- `simple-start: Select Projects Root`
+- `simple-start: Refresh Start Page`
 
 ## Development
 
 - `npm run compile`: Compile the TypeScript extension.
 - `npm run watch`: Rebuild on file changes.
+- `npm run package:vsix`: Create a `.vsix` package for local installation.
 - Press `F5` in VS Code to launch the Extension Development Host.
 
 ## Run The Extension
@@ -41,11 +42,11 @@ This extension contributes the following settings:
 1. Open this repository in VS Code.
 2. Press `F5` to start the `Run Extension` debug configuration.
 3. In the Extension Development Host window, make sure no folder or workspace is open.
-4. If the start page does not open automatically, run `Simple Start: Open Start Page` from the Command Palette.
+4. If the start page does not open automatically, run `simple-start: Open Start Page` from the Command Palette.
 5. Use `Choose root` on the page, or set `simpleStart.projectsRoot` in Settings.
 6. Click one of the listed folders to open that project in the current window.
 
-If you want Simple Start to be the startup surface, set `Workbench: Startup Editor` to `none`. This extension uses that built-in VS Code setting as the signal to auto-open the page in empty windows.
+If you want simple-start to be the startup surface, set `Workbench: Startup Editor` to `none`. This extension uses that built-in VS Code setting as the signal to auto-open the page in empty windows.
 
 ## Test The Behavior
 
@@ -63,12 +64,67 @@ Automated checks:
 2. Run `npm run lint`.
 3. Run `npm test`.
 
+## Publish
+
+This extension can be distributed in three ways:
+
+- Visual Studio Marketplace for standard VS Code installs.
+- Open VSX for VS Code-compatible editors that do not use the Microsoft marketplace.
+- A `.vsix` package for manual installation in editors such as Cursor.
+
+### One-time setup
+
+1. Create a publisher named `ElectricPants` in the Visual Studio Marketplace.
+2. Create an Open VSX namespace that matches your publishing account.
+3. Create access tokens for both services.
+4. Log in before publishing:
+
+```bash
+npx vsce login ElectricPants
+npx ovsx create-namespace ElectricPants
+npx ovsx publish --pat <OPEN_VSX_TOKEN>
+```
+
+If you prefer not to store credentials in the CLI, you can pass them per command:
+
+```bash
+npx vsce publish --pat <VS_MARKETPLACE_TOKEN>
+npx ovsx publish --pat <OPEN_VSX_TOKEN>
+```
+
+### Release workflow
+
+1. Update `version` in `package.json`.
+2. Add release notes in `CHANGELOG.md`.
+3. Run `npm run compile`.
+4. Run `npm run lint`.
+5. Run `npm run package:vsix` and test the generated `.vsix` in VS Code and Cursor.
+6. Publish to the Visual Studio Marketplace.
+7. Publish to Open VSX.
+8. Attach the `.vsix` file to a GitHub release.
+
+Commands:
+
+```bash
+npm run package:vsix
+npm run publish:vsce -- --pat <VS_MARKETPLACE_TOKEN>
+npm run publish:ovsx -- --pat <OPEN_VSX_TOKEN>
+```
+
+### Cursor compatibility
+
+Cursor can install standard VS Code extensions when they are distributed as a `.vsix`, and many builds can also consume Open VSX distributions. The safest compatibility path is:
+
+1. Keep the extension on stable VS Code APIs.
+2. Publish to Open VSX.
+3. Ship a `.vsix` artifact with each release.
+
 ## Known Issues
 
 - The project list is intentionally shallow: only the immediate child folders of the configured projects root are shown.
 - Project icons use fast local heuristics, not deep scans. Projects outside common iOS asset or favicon layouts fall back to the letter badge.
 - Opening a folder reloads the VS Code window, which also closes the start page. That is expected behavior for `vscode.openFolder`.
-- Extensions cannot add a custom value to VS Code's built-in `Workbench: Startup Editor` selector, so Simple Start uses `none` as the opt-in launch signal instead.
+- Extensions cannot add a custom value to VS Code's built-in `Workbench: Startup Editor` selector, so simple-start uses `none` as the opt-in launch signal instead.
 
 ## Release Notes
 

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const extensionId = 'vscode-simple-start';
+const extensionId = 'simple-start';
 const configSection = 'simpleStart';
 const projectsRootSetting = 'projectsRoot';
 const openOnStartupSetting = 'openOnStartup';
@@ -71,7 +71,7 @@ async function openStartPage(context: vscode.ExtensionContext): Promise<void> {
 
 	startPagePanel = vscode.window.createWebviewPanel(
 		'simpleStart.startPage',
-		'Simple Start',
+		'simple-start',
 		vscode.ViewColumn.One,
 		{
 			enableScripts: true,
