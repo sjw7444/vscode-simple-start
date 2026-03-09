@@ -257,8 +257,6 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 			<button class="project-card" data-path="${encodedPath}">
 				${projectVisual}
 				<span class="project-name">${encodedName}</span>
-				<span class="project-path">${folderName}</span>
-				<span class="project-open">Open project</span>
 			</button>`;
 	}).join('');
 
@@ -278,34 +276,34 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 			<style nonce="${nonce}">
 				:root {
 					color-scheme: light dark;
-					--bg: #efe5d3;
-					--bg-deep: #d9c3a6;
-					--panel: rgba(255, 249, 240, 0.8);
-					--panel-strong: rgba(255, 252, 247, 0.94);
-					--panel-border: rgba(71, 45, 19, 0.14);
-					--text: #24170f;
-					--muted: #735843;
-					--accent: #0e7a5f;
-					--accent-strong: #0a5f49;
-					--accent-soft: rgba(14, 122, 95, 0.14);
-					--shadow: 0 24px 80px rgba(66, 37, 8, 0.16);
-					--error: #8f2d1e;
+					--bg: #f3f5f9;
+					--bg-deep: #e8edf5;
+					--surface: #ffffff;
+					--surface-soft: #f7f9fd;
+					--surface-border: #d6dfed;
+					--text: #111827;
+					--muted: #5b6475;
+					--accent: #0f766e;
+					--accent-strong: #0b5f59;
+					--accent-soft: rgba(15, 118, 110, 0.12);
+					--shadow: 0 14px 40px rgba(12, 20, 36, 0.08);
+					--error: #b42318;
 				}
 
 				@media (prefers-color-scheme: dark) {
 					:root {
-						--bg: #13100d;
-						--bg-deep: #23180f;
-						--panel: rgba(31, 24, 18, 0.8);
-						--panel-strong: rgba(41, 31, 23, 0.94);
-						--panel-border: rgba(252, 228, 197, 0.11);
-						--text: #f7efdf;
-						--muted: #cfbea8;
-						--accent: #74d5b0;
-						--accent-strong: #52b893;
-						--accent-soft: rgba(116, 213, 176, 0.14);
-						--shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
-						--error: #ff9c8b;
+						--bg: #0d1320;
+						--bg-deep: #121b2c;
+						--surface: #131f33;
+						--surface-soft: #1a2942;
+						--surface-border: #2b3a54;
+						--text: #eef4ff;
+						--muted: #a8b6cf;
+						--accent: #4fd1c5;
+						--accent-strong: #73e0d6;
+						--accent-soft: rgba(79, 209, 197, 0.14);
+						--shadow: 0 18px 48px rgba(1, 8, 20, 0.55);
+						--error: #ff9b8f;
 					}
 				}
 
@@ -316,103 +314,76 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				body {
 					margin: 0;
 					min-height: 100vh;
-					padding: 32px;
-					font-family: Georgia, 'Times New Roman', serif;
+					padding: 28px;
+					font-family: 'Avenir Next', 'Segoe UI Variable', 'IBM Plex Sans', 'Noto Sans', sans-serif;
 					background:
-						radial-gradient(circle at 0% 0%, rgba(14, 122, 95, 0.24), transparent 24%),
-						radial-gradient(circle at 100% 100%, rgba(201, 121, 35, 0.22), transparent 26%),
-						linear-gradient(140deg, var(--bg), var(--bg-deep) 180%);
+						radial-gradient(circle at 100% -10%, rgba(15, 118, 110, 0.12), transparent 40%),
+						linear-gradient(160deg, var(--bg), var(--bg-deep));
 					color: var(--text);
 				}
 
 				main {
-					max-width: 980px;
+					max-width: 1024px;
 					margin: 0 auto;
-					padding: 34px;
-					border: 1px solid var(--panel-border);
-					border-radius: 30px;
-					background: linear-gradient(180deg, var(--panel-strong), var(--panel));
-					backdrop-filter: blur(12px);
+					padding: 28px;
+					border: 1px solid var(--surface-border);
+					border-radius: 18px;
+					background: var(--surface);
 					box-shadow: var(--shadow);
-					position: relative;
-					overflow: hidden;
-				}
-
-				main::before {
-					content: '';
-					position: absolute;
-					inset: 0 auto auto 0;
-					width: 260px;
-					height: 260px;
-					background: radial-gradient(circle, var(--accent-soft), transparent 68%);
-					pointer-events: none;
 				}
 
 				header {
-					display: grid;
-					grid-template-columns: minmax(0, 1fr) auto;
-					gap: 20px;
+					display: flex;
+					justify-content: space-between;
+					gap: 16px;
 					align-items: start;
-					margin-bottom: 28px;
-					position: relative;
-					z-index: 1;
+					margin-bottom: 20px;
 				}
 
 				.kicker {
 					display: inline-flex;
 					align-items: center;
-					gap: 8px;
-					padding: 7px 12px;
-					margin-bottom: 14px;
+					padding: 4px 10px;
+					margin-bottom: 10px;
 					border-radius: 999px;
 					background: var(--accent-soft);
-					color: var(--accent-strong);
-					font-size: 0.82rem;
-					font-weight: 700;
-					letter-spacing: 0.08em;
+					color: var(--accent);
+					font-size: 0.72rem;
+					font-weight: 800;
+					letter-spacing: 0.06em;
 					text-transform: uppercase;
 				}
 
 				h1 {
-					margin: 0 0 8px;
-					font-size: clamp(2.3rem, 5vw, 4.6rem);
-					line-height: 0.92;
-					font-weight: 700;
-					max-width: 12ch;
-				}
-
-				p {
 					margin: 0;
-					max-width: 42rem;
-					color: var(--muted);
-					font-size: 1.04rem;
-					line-height: 1.6;
+					font-size: clamp(1.8rem, 3vw, 2.3rem);
+					line-height: 1.12;
+					font-weight: 760;
 				}
 
 				.hero-meta {
-					display: grid;
-					gap: 10px;
-					justify-items: end;
+					display: flex;
+					align-items: center;
 				}
 
 				.project-count {
 					display: inline-flex;
 					align-items: baseline;
-					gap: 8px;
-					padding: 16px 18px;
-					border-radius: 22px;
-					background: rgba(255, 255, 255, 0.34);
-					border: 1px solid var(--panel-border);
+					gap: 6px;
+					padding: 10px 12px;
+					border-radius: 12px;
+					background: var(--surface-soft);
+					border: 1px solid var(--surface-border);
 				}
 
 				.project-count strong {
-					font-size: clamp(1.8rem, 4vw, 2.8rem);
+					font-size: clamp(1.2rem, 2vw, 1.5rem);
 					line-height: 1;
 				}
 
 				.project-count span {
 					color: var(--muted);
-					font-size: 0.95rem;
+					font-size: 0.82rem;
 				}
 
 				.toolbar {
@@ -421,9 +392,9 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					gap: 12px;
 					align-items: center;
 					justify-content: space-between;
-					margin-top: 28px;
-					padding-top: 22px;
-					border-top: 1px solid var(--panel-border);
+					margin-top: 20px;
+					padding-top: 16px;
+					border-top: 1px solid var(--surface-border);
 				}
 
 				.toolbar button,
@@ -433,40 +404,39 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				}
 
 				.toolbar button {
-					padding: 12px 18px;
-					border-radius: 999px;
+					padding: 10px 14px;
+					border-radius: 10px;
 					font: inherit;
-					background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+					font-weight: 650;
+					background: var(--accent);
 					color: #fff;
-					box-shadow: 0 10px 26px rgba(14, 122, 95, 0.18);
-					transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+					transition: transform 120ms ease, background 120ms ease;
 				}
 
 				.toolbar button.secondary {
-					background: transparent;
+					background: var(--surface-soft);
 					color: var(--text);
-					border: 1px solid var(--panel-border);
-					box-shadow: none;
+					border: 1px solid var(--surface-border);
 				}
 
 				.toolbar button:hover,
 				.toolbar button:focus-visible,
 				.project-card:hover,
 				.project-card:focus-visible {
-					transform: translateY(-2px);
+					transform: translateY(-1px);
 				}
 
 				.toolbar button:hover,
 				.toolbar button:focus-visible {
-					box-shadow: 0 14px 30px rgba(14, 122, 95, 0.24);
+					background: var(--accent-strong);
 				}
 
 				.root-banner {
 					flex: 1 1 320px;
-					padding: 16px 18px;
-					border-radius: 20px;
-					background: rgba(255, 255, 255, 0.26);
-					border: 1px solid var(--panel-border);
+					padding: 12px 14px;
+					border-radius: 12px;
+					background: var(--surface-soft);
+					border: 1px solid var(--surface-border);
 				}
 
 				.toolbar-actions {
@@ -478,38 +448,34 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				.root-label {
 					display: block;
 					margin-bottom: 4px;
-					font-size: 0.78rem;
-					letter-spacing: 0.12em;
+					font-size: 0.72rem;
+					letter-spacing: 0.08em;
 					text-transform: uppercase;
 					color: var(--muted);
 				}
 
 				.root-path {
-					font-family: 'SFMono-Regular', Consolas, monospace;
-					font-size: 0.95rem;
+					font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+					font-size: 0.88rem;
 					word-break: break-all;
 				}
 
 				.project-list {
 					display: grid;
-					grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-					gap: 16px;
-					position: relative;
-					z-index: 1;
+					grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+					gap: 12px;
 				}
 
 				.project-search {
-					position: relative;
-					margin-bottom: 18px;
-					z-index: 1;
+					margin-bottom: 12px;
 				}
 
 				.project-search input {
 					width: 100%;
-					padding: 12px 14px;
-					border-radius: 14px;
-					border: 1px solid var(--panel-border);
-					background: rgba(255, 255, 255, 0.34);
+					padding: 10px 12px;
+					border-radius: 10px;
+					border: 1px solid var(--surface-border);
+					background: var(--surface-soft);
 					color: var(--text);
 					font: inherit;
 				}
@@ -522,16 +488,16 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					display: flex;
 					flex-direction: column;
 					align-items: flex-start;
-					gap: 10px;
-					padding: 18px;
-					border-radius: 24px;
-					background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.24));
-					border: 1px solid var(--panel-border);
+					gap: 8px;
+					padding: 14px;
+					border-radius: 14px;
+					background: var(--surface-soft);
+					border: 1px solid var(--surface-border);
 					text-align: left;
 					color: var(--text);
-					min-height: 150px;
+					min-height: 100px;
 					justify-content: space-between;
-					transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+					transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 					animation: card-in 180ms ease both;
 				}
 
@@ -541,36 +507,37 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 
 				.project-card:hover,
 				.project-card:focus-visible {
-					border-color: rgba(14, 122, 95, 0.3);
-					background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.34));
+					border-color: rgba(15, 118, 110, 0.45);
+					background: var(--surface);
+					box-shadow: 0 6px 16px rgba(15, 30, 55, 0.12);
 				}
 
 				.project-mark {
 					display: inline-grid;
 					place-items: center;
-					width: 42px;
-					height: 42px;
-					border-radius: 14px;
+					width: 38px;
+					height: 38px;
+					border-radius: 10px;
 					background: var(--accent-soft);
-					color: var(--accent-strong);
-					font-size: 1rem;
-					font-weight: 700;
+					color: var(--accent);
+					font-size: 0.96rem;
+					font-weight: 800;
 					text-transform: uppercase;
 				}
 
 				.project-icon {
-					width: 42px;
-					height: 42px;
-					border-radius: 14px;
+					width: 38px;
+					height: 38px;
+					border-radius: 10px;
 					object-fit: cover;
-					background: rgba(255, 255, 255, 0.22);
-					border: 1px solid rgba(0, 0, 0, 0.04);
+					background: rgba(255, 255, 255, 0.3);
+					border: 1px solid rgba(17, 24, 39, 0.08);
 				}
 
 				.project-name {
-					font-size: 1.18rem;
+					font-size: 1.02rem;
 					font-weight: 700;
-					line-height: 1.3;
+					line-height: 1.2;
 				}
 
 				.project-path {
@@ -583,23 +550,21 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				}
 
 				.project-open {
-					font-size: 0.88rem;
+					font-size: 0.8rem;
 					font-weight: 700;
-					letter-spacing: 0.04em;
+					letter-spacing: 0.03em;
 					text-transform: uppercase;
-					color: var(--accent-strong);
+					color: var(--accent);
 				}
 
 				.status {
-					padding: 24px;
-					border-radius: 22px;
-					border: 1px dashed var(--panel-border);
-					background: rgba(255, 255, 255, 0.24);
-					font-size: 1rem;
-					line-height: 1.6;
+					padding: 16px;
+					border-radius: 12px;
+					border: 1px dashed var(--surface-border);
+					background: var(--surface-soft);
+					font-size: 0.96rem;
+					line-height: 1.5;
 					color: var(--muted);
-					position: relative;
-					z-index: 1;
 				}
 
 				.status-error {
@@ -620,20 +585,17 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 
 				@media (max-width: 640px) {
 					body {
-						padding: 16px;
+						padding: 12px;
 					}
 
 					main {
-						padding: 20px;
-						border-radius: 22px;
+						padding: 16px;
+						border-radius: 14px;
 					}
 
 					header {
-						grid-template-columns: 1fr;
-					}
-
-					.hero-meta {
-						justify-items: start;
+						flex-direction: column;
+						align-items: flex-start;
 					}
 
 					.toolbar {
