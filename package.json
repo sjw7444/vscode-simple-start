@@ -13,6 +13,7 @@
   "bugs": {
     "url": "https://github.com/sjw7444/vscode-simple-start/issues"
   },
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.109.0"
   },

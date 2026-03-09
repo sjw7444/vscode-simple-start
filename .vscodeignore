@@ -11,3 +11,4 @@ vsc-extension-quickstart.md
 **/*.ts
 **/.vscode-test.*
 out/test/**
+images/icon-source.svg
