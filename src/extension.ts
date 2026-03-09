@@ -226,7 +226,6 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 		return `
 			<button class="project-card" data-path="${encodedPath}">
 				<span class="project-name">${encodedName}</span>
-				<span class="project-path">${encodedPath}</span>
 			</button>`;
 	}).join('');
 
@@ -323,7 +322,9 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					display: flex;
 					flex-wrap: wrap;
 					gap: 12px;
-					align-items: flex-start;
+					align-items: center;
+					justify-content: space-between;
+					margin-top: 24px;
 				}
 
 				.toolbar button,
@@ -355,11 +356,17 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				}
 
 				.root-banner {
-					margin-bottom: 20px;
+					flex: 1 1 320px;
 					padding: 14px 18px;
 					border-radius: 18px;
 					background: rgba(255, 255, 255, 0.32);
 					border: 1px solid var(--panel-border);
+				}
+
+				.toolbar-actions {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 12px;
 				}
 
 				.root-label {
@@ -387,7 +394,6 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 					display: flex;
 					flex-direction: column;
 					align-items: flex-start;
-					gap: 8px;
 					padding: 18px;
 					border-radius: 20px;
 					background: rgba(255, 255, 255, 0.44);
@@ -399,13 +405,6 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 				.project-name {
 					font-size: 1.15rem;
 					font-weight: 700;
-				}
-
-				.project-path {
-					font-size: 0.86rem;
-					line-height: 1.5;
-					color: var(--muted);
-					word-break: break-all;
 				}
 
 				.status {
@@ -431,6 +430,18 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 						padding: 20px;
 						border-radius: 22px;
 					}
+
+					.toolbar {
+						align-items: stretch;
+					}
+
+					.toolbar-actions {
+						width: 100%;
+					}
+
+					.toolbar-actions button {
+						flex: 1 1 auto;
+					}
 				}
 			</style>
 		</head>
@@ -441,16 +452,18 @@ function getWebviewHtml(webview: vscode.Webview, state: StartPageState): string 
 						<h1>Pick up where you left off.</h1>
 						<p>Simple Start lists the folders directly inside your chosen projects root. Click one to open it in this window and move straight into work.</p>
 					</div>
-					<div class="toolbar">
+				</header>
+				${stateMarkup}
+				<section class="toolbar">
+					<div class="root-banner">
+						<span class="root-label">Projects root</span>
+						<span class="root-path">${escapedRoot}</span>
+					</div>
+					<div class="toolbar-actions">
 						<button type="button" data-command="chooseRoot">Choose root</button>
 						<button type="button" class="secondary" data-command="refresh">Refresh</button>
 					</div>
-				</header>
-				<section class="root-banner">
-					<span class="root-label">Projects root</span>
-					<span class="root-path">${escapedRoot}</span>
 				</section>
-				${stateMarkup}
 			</main>
 			<script nonce="${nonce}">
 				const vscode = acquireVsCodeApi();
